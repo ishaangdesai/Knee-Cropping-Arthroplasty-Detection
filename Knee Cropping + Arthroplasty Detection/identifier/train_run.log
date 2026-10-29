@@ -1,0 +1,34 @@
+Output directory 'model_fasterrcnn_efficientnet_b1' created or already exists.
+============================================================
+TRAINING CONFIGURATION
+============================================================
+Classes:                       2 - __background__, knee
+Annotations File:              merged_annotations.csv
+Image Directory:               images_train_cropped
+Output Model Directory:        model_fasterrcnn_efficientnet_b1
+Validation Split:              0.05
+Epochs:                        100
+Batch Size:                    8
+Learning Rate:                 0.0003
+Num Workers:                   16
+Max Image Size:                1024
+Mixed Precision Training:      Enabled
+Early Stopping Patience:       50 epochs
+Checkpoint Interval:           5
+Architecture:                  FASTERRCNN
+Backbone:                      efficientnet_b1
+Data Augmentation:
+  Horizontal Flip:               Enabled
+  Color Jitter:                  Disabled
+  Rotation:                      Disabled (10°)
+  Scale:                         Enabled (±0.2)
+  Translate:                     Enabled (±0.1)
+============================================================
+Please ensure 'torchmetrics' is installed (pip install torchmetrics).
+
+
+Dataset contains 567 unique images.
+Splitting into 539 training and 28 validation images.
+Using device: cuda
+
+Starting model training...

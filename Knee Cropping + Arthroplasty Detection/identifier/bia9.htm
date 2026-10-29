@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BD Image Annotator</title>
+    <style>
+        html, body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        body {
+            display: flex;
+        }
+        #sidebar {
+            width: 250px;
+            flex-shrink: 0;
+            border-right: 1px solid #ccc;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+        #file-controls {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+        #file-buttons-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+        /* --- FIXED: Common button style for Import/Export --- */
+        .file-control-btn {
+            flex-grow: 1;
+            flex-basis: 0;
+            text-align: center;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            border: none;
+            color: white;
+            font-size: 14px; /* Explicitly set font size */
+            line-height: 1.5; /* Align text vertically */
+        }
+        #file-input-container .file-control-btn {
+            background-color: #28a745;
+            display: block;
+        }
+        #file-input-container .file-control-btn:hover { background-color: #218838; }
+        #edit-input-container .file-control-btn {
+            background-color: #ffc107;
+            display: block;
+        }
+        #edit-input-container .file-control-btn:hover { background-color: #e0a800; }
+        #edit-input-container input[type="file"] { display: none; }
+        #export-button {
+            background-color: #007bff;
+        }
+        #export-button:hover { background-color: #0056b3; }
+        #file-input-container input[type="file"] { display: none; }
+
+        #image-list-container {
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        #image-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        #image-list li {
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #image-list li:hover { background-color: #e0e0e0; }
+        #image-list li.selected {
+            background-color: #cceeff;
+            font-weight: bold;
+        }
+        #class-manager {
+            padding: 10px;
+            border-top: 1px solid #ccc;
+            background-color: #e9ecef;
+        }
+        #class-list {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 10px 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #class-list li {
+            padding: 6px 8px;
+            font-size: 13px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+        }
+        #class-list li:hover { background-color: #f0f0f0; }
+        #class-list li.active {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            border-color: #0056b3;
+        }
+        #new-class-input {
+            width: calc(100% - 12px);
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            display: none;
+        }
+        #class-buttons-container {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+        #add-class-btn, #lock-btn {
+            flex-grow: 1;
+            padding: 8px;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #add-class-btn { background-color: #6c757d; }
+        #add-class-btn:hover { background-color: #5a6268; }
+        #lock-btn { background-color: #17a2b8; }
+        #lock-btn:hover { background-color: #138496; }
+        #lock-btn.locked { background-color: #28a745; font-weight: bold; }
+        #main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            width: calc(100% - 250px);
+        }
+        #annotation-area {
+            flex-grow: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+            background-color: #e9ecef;
+            cursor: crosshair;
+        }
+        #annotation-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            user-select: none;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .bounding-box {
+            position: absolute;
+            border: 1px solid red;
+            background-color: rgba(255, 0, 0, 0.2);
+            cursor: move;
+            resize: both;
+            box-sizing: border-box;
+        }
+        .bounding-box .crosshair-h, .bounding-box .crosshair-v {
+            position: absolute;
+            background-color: red;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .bounding-box .crosshair-h {
+            width: 10px;
+            height: 1px;
+        }
+        .bounding-box .crosshair-v {
+            width: 1px;
+            height: 10px;
+        }
+        .bounding-box.selected-box {
+            border-color: #007bff;
+            border-width: 2px;
+            background-color: rgba(0, 123, 255, 0.3);
+        }
+        .bounding-box.selected-box .crosshair-h,
+        .bounding-box.selected-box .crosshair-v {
+            background-color: #007bff;
+        }
+        .bounding-box::after {
+            content: attr(data-class);
+            position: absolute;
+            top: -22px;
+            left: -2px;
+            background-color: red;
+            color: white;
+            padding: 2px 5px;
+            font-size: 12px;
+            font-weight: bold;
+            white-space: nowrap;
+            border-radius: 3px;
+        }
+        .bounding-box.selected-box::after {
+            background-color: #007bff;
+        }
+        /* --- FIXED: Copyright notice style --- */
+        #copyright {
+            position: absolute;
+            bottom: 5px;
+            right: 10px;
+            font-size: 10px;
+            color: #888;
+            pointer-events: none; /* Make it non-interactive */
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <div id="file-controls">
+            <div id="file-buttons-wrapper">
+                <div id="file-input-container">
+                    <label for="image-folder-input" class="file-control-btn">Folder</label>
+                    <input type="file" id="image-folder-input" multiple webkitdirectory directory accept="image/*">
+                </div>
+                <div id="edit-input-container">
+                    <label for="edit-csv-input" class="file-control-btn">Labels</label>
+                    <input type="file" id="edit-csv-input" accept=".csv,text/csv">
+                </div>
+                <button id="export-button" class="file-control-btn">Save</button>
+            </div>
+        </div>
+        <div id="image-list-container">
+            <ul id="image-list"></ul>
+        </div>
+        <div id="class-manager">
+            <ul id="class-list"></ul>
+            <input type="text" id="new-class-input" placeholder="Enter new class name...">
+            <div id="class-buttons-container">
+                <button id="add-class-btn">Add Class</button>
+                <button id="lock-btn">Lock</button>
+            </div>
+        </div>
+    </div>
+    <div id="main-content">
+        <div id="annotation-area">
+            <img id="annotation-image" src="" alt="">
+        </div>
+        <div id="copyright">BIA (c) 2025</div>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const imageFolderInput = document.getElementById('image-folder-input');
+        const editCsvInput = document.getElementById('edit-csv-input');
+        const imageList = document.getElementById('image-list');
+        const annotationImage = document.getElementById('annotation-image');
+        const annotationArea = document.getElementById('annotation-area');
+        const exportButton = document.getElementById('export-button');
+        const classList = document.getElementById('class-list');
+        const addClassBtn = document.getElementById('add-class-btn');
+        const newClassInput = document.getElementById('new-class-input');
+        const lockBtn = document.getElementById('lock-btn');
+
+        // --- State Variables ---
+        let images = [], annotations = {}, currentImageIndex = -1;
+        let isDrawing = false, startPoint = { x: 0, y: 0 };
+        let currentBox = null, selectedBox = null;
+        let classes = ['generic'], activeClass = 'generic';
+        
+        // --- Lock Mode State ---
+        let isLocked = false;
+        let lockedBoxSize = null;
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => renderClasses());
+        imageFolderInput.addEventListener('change', handleFolderSelect);
+        editCsvInput.addEventListener('change', handleAnnotationFileSelect);
+        annotationArea.addEventListener('click', handleAnnotationClick);
+        annotationArea.addEventListener('mousemove', handleAnnotationMouseMove);
+        document.addEventListener('keydown', handleKeyPress);
+        exportButton.addEventListener('click', exportAnnotations);
+        window.addEventListener('resize', () => displayAnnotations(images[currentImageIndex]?.name));
+        addClassBtn.addEventListener('click', () => {
+            newClassInput.style.display = 'block';
+            newClassInput.focus();
+        });
+        newClassInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                addNewClass(newClassInput.value);
+                newClassInput.value = '';
+                newClassInput.style.display = 'none';
+            } else if (e.key === 'Escape') {
+                newClassInput.value = '';
+                newClassInput.style.display = 'none';
+            }
+        });
+        lockBtn.addEventListener('click', toggleLockMode);
+
+        // --- Main Functions ---
+        function handleAnnotationFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csvContent = e.target.result;
+                parseAnnotations(csvContent);
+                if (currentImageIndex !== -1) {
+                    displayAnnotations(images[currentImageIndex].name);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function parseAnnotations(csvContent) {
+            annotations = {};
+            const lines = csvContent.split('\n').slice(1); // Skip header
+            const loadedClasses = new Set();
+
+            lines.forEach(line => {
+                if (line.trim() === '') return;
+                const parts = line.split(',');
+                if (parts.length < 8) return;
+                const filename = parts[0];
+                const ann = {
+                    filename: filename,
+                    width: parseInt(parts[1], 10),
+                    height: parseInt(parts[2], 10),
+                    class: parts[3],
+                    xmin: parseInt(parts[4], 10),
+                    ymin: parseInt(parts[5], 10),
+                    xmax: parseInt(parts[6], 10),
+                    ymax: parseInt(parts[7], 10)
+                };
+
+                if (!annotations[filename]) {
+                    annotations[filename] = [];
+                }
+                annotations[filename].push(ann);
+                if (ann.class) {
+                    loadedClasses.add(ann.class);
+                }
+            });
+
+            if (loadedClasses.size > 0) {
+                classes = Array.from(loadedClasses);
+                if (!classes.includes(activeClass) || activeClass === 'generic') {
+                    activeClass = classes[0];
+                }
+                renderClasses();
+            }
+        }
+
+        function handleFolderSelect(event) {
+            images = Array.from(event.target.files)
+                .filter(file => file.type.startsWith('image/'))
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+            imageList.innerHTML = '';
+            if (images.length === 0) {
+                alert('No image files were found in the selected folder.');
+                annotationImage.removeAttribute('src');
+                return;
+            }
+            images.forEach((file, index) => {
+                const li = document.createElement('li');
+                li.textContent = file.name;
+                li.dataset.index = index;
+                li.addEventListener('click', () => loadImage(index));
+                imageList.appendChild(li);
+                if (!annotations[file.name]) {
+                    annotations[file.name] = [];
+                }
+            });
+            if (images.length > 0) loadImage(0);
+        }
+
+        function loadImage(index) {
+            if (index < 0 || index >= images.length) return;
+            saveCurrentAnnotations();
+            
+            isDrawing = false;
+            currentBox = null;
+            selectedBox = null;
+
+            currentImageIndex = index;
+            const selectedFile = images[currentImageIndex];
+
+            Array.from(imageList.children).forEach((li, i) => li.classList.toggle('selected', i === currentImageIndex));
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                annotationImage.src = e.target.result;
+                annotationImage.onload = () => displayAnnotations(selectedFile.name);
+            };
+            reader.readAsDataURL(selectedFile);
+        }
+
+        function handleKeyPress(e) {
+            if (e.target === newClassInput) return;
+            if (e.key === 'ArrowUp') { e.preventDefault(); loadImage(currentImageIndex - 1); }
+            if (e.key === 'ArrowDown') { e.preventDefault(); loadImage(currentImageIndex + 1); }
+            if (e.key === 'Escape') {
+                if(isDrawing) {
+                    isDrawing = false;
+                    currentBox.remove();
+                    currentBox = null;
+                } else if(isLocked) {
+                    toggleLockMode();
+                }
+            }
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedBox) {
+                e.preventDefault();
+                selectedBox.remove();
+                selectedBox = null;
+                saveCurrentAnnotations();
+            }
+        }
+
+        // --- Class & Lock Management ---
+        function renderClasses() {
+            classList.innerHTML = '';
+            classes.forEach(className => {
+                const li = document.createElement('li');
+                li.textContent = className;
+                li.dataset.className = className;
+                if (className === activeClass) {
+                    li.classList.add('active');
+                }
+                li.addEventListener('click', () => setActiveClass(className));
+                classList.appendChild(li);
+            });
+        }
+
+        function setActiveClass(className) {
+            activeClass = className;
+            if (selectedBox) {
+                selectedBox.dataset.class = className;
+                saveCurrentAnnotations();
+            }
+            renderClasses();
+        }
+
+        function addNewClass(className) {
+            const newClassName = className.trim();
+            if (newClassName && !classes.includes(newClassName)) {
+                const genericIndex = classes.indexOf('generic');
+                if (genericIndex > -1) {
+                    classes.splice(genericIndex, 1);
+                }
+                
+                classes.push(newClassName);
+                setActiveClass(newClassName);
+            }
+        }
+
+        function toggleLockMode() {
+            isLocked = !isLocked;
+            if (isLocked) {
+                if (currentImageIndex === -1) { isLocked = false; return; }
+                const filename = images[currentImageIndex].name;
+                const lastAnnotations = annotations[filename];
+
+                if (!lastAnnotations || lastAnnotations.length === 0) {
+                    alert("Please draw at least one annotation to lock its size.");
+                    isLocked = false;
+                    return;
+                }
+                const lastAnn = lastAnnotations[lastAnnotations.length - 1];
+                lockedBoxSize = {
+                    width: lastAnn.xmax - lastAnn.xmin,
+                    height: lastAnn.ymax - lastAnn.ymin
+                };
+
+                lockBtn.textContent = "Unlock";
+                lockBtn.classList.add('locked');
+                annotationArea.style.cursor = 'copy';
+            } else {
+                lockedBoxSize = null;
+                lockBtn.textContent = "Lock";
+                lockBtn.classList.remove('locked');
+                annotationArea.style.cursor = 'crosshair';
+            }
+        }
+
+        // --- Annotation & Drawing Logic ---
+        function handleAnnotationClick(e) {
+            if (currentImageIndex === -1) return;
+
+            if (isLocked) {
+                if (e.target !== annotationImage || !lockedBoxSize) return;
+
+                const imageRect = annotationImage.getBoundingClientRect();
+                const areaRect = annotationArea.getBoundingClientRect();
+                
+                const scaleX = imageRect.width / annotationImage.naturalWidth;
+                const scaleY = imageRect.height / annotationImage.naturalHeight;
+                const displayWidth = lockedBoxSize.width * scaleX;
+                const displayHeight = lockedBoxSize.height * scaleY;
+
+                const clickXInImage = e.clientX - imageRect.left;
+                const clickYInImage = e.clientY - imageRect.top;
+
+                const imageOffsetX = imageRect.left - areaRect.left;
+                const imageOffsetY = imageRect.top - areaRect.top;
+
+                const left = (clickXInImage - displayWidth / 2) + imageOffsetX;
+                const top = (clickYInImage - displayHeight / 2) + imageOffsetY;
+                
+                const box = createBoundingBox(left, top, displayWidth, displayHeight, activeClass);
+                annotationArea.appendChild(box);
+                makeResizableAndDraggable(box);
+                saveCurrentAnnotations();
+                deselectAllBoxes();
+
+            } else if (isDrawing) {
+                isDrawing = false;
+                if (parseFloat(currentBox.style.width) < 5 || parseFloat(currentBox.style.height) < 5) {
+                    currentBox.remove();
+                } else {
+                    makeResizableAndDraggable(currentBox);
+                    saveCurrentAnnotations();
+                    deselectAllBoxes();
+                }
+                currentBox = null;
+            } else if (e.target === annotationImage) {
+                deselectAllBoxes();
+                isDrawing = true;
+                const imageRect = annotationImage.getBoundingClientRect();
+                startPoint = { x: e.clientX - imageRect.left, y: e.clientY - imageRect.top };
+                currentBox = createBoundingBox(startPoint.x, startPoint.y, 0, 0, activeClass);
+                annotationArea.appendChild(currentBox);
+            }
+        }
+
+        function handleAnnotationMouseMove(e) {
+            if (isLocked || !isDrawing || !currentBox) return;
+            const imageRect = annotationImage.getBoundingClientRect();
+            const currentX = Math.max(0, Math.min(e.clientX - imageRect.left, imageRect.width));
+            const currentY = Math.max(0, Math.min(e.clientY - imageRect.top, imageRect.height));
+            const left = Math.min(startPoint.x, currentX), top = Math.min(startPoint.y, currentY);
+            const width = Math.abs(currentX - startPoint.x), height = Math.abs(currentY - startPoint.y);
+            const areaRect = annotationArea.getBoundingClientRect();
+            const imageOffsetX = imageRect.left - areaRect.left, imageOffsetY = imageRect.top - areaRect.top;
+            currentBox.style.left = `${left + imageOffsetX}px`;
+            currentBox.style.top = `${top + imageOffsetY}px`;
+            currentBox.style.width = `${width}px`;
+            currentBox.style.height = `${height}px`;
+        }
+        
+        function displayAnnotations(imageFilename) {
+            document.querySelectorAll('.bounding-box').forEach(box => box.remove());
+            if (!imageFilename || !annotations[imageFilename]) return;
+            const imageRect = annotationImage.getBoundingClientRect();
+            if (imageRect.width === 0) return;
+            const areaRect = annotationArea.getBoundingClientRect();
+            const imageOffsetX = imageRect.left - areaRect.left, imageOffsetY = imageRect.top - areaRect.top;
+            const scaleX = imageRect.width / annotationImage.naturalWidth;
+            const scaleY = imageRect.height / annotationImage.naturalHeight;
+
+            annotations[imageFilename].forEach(ann => {
+                const box = createBoundingBox(
+                    (ann.xmin * scaleX) + imageOffsetX, 
+                    (ann.ymin * scaleY) + imageOffsetY, 
+                    (ann.xmax - ann.xmin) * scaleX, 
+                    (ann.ymax - ann.ymin) * scaleY,
+                    ann.class
+                );
+                makeResizableAndDraggable(box);
+                annotationArea.appendChild(box);
+            });
+        }
+        
+        function createBoundingBox(x, y, width, height, className) {
+            const box = document.createElement('div');
+            box.className = 'bounding-box';
+            box.style.left = `${x}px`;
+            box.style.top = `${y}px`;
+            box.style.width = `${width}px`;
+            box.style.height = `${height}px`;
+            box.dataset.class = className;
+
+            const crosshairH = document.createElement('span');
+            crosshairH.className = 'crosshair-h';
+            box.appendChild(crosshairH);
+
+            const crosshairV = document.createElement('span');
+            crosshairV.className = 'crosshair-v';
+            box.appendChild(crosshairV);
+
+            return box;
+        }
+
+        function saveCurrentAnnotations() {
+            if (currentImageIndex === -1) return;
+            const filename = images[currentImageIndex].name;
+            const currentAnns = [];
+            const imageRect = annotationImage.getBoundingClientRect();
+            if (imageRect.width === 0) return;
+            const scaleX = annotationImage.naturalWidth / imageRect.width;
+            const scaleY = annotationImage.naturalHeight / imageRect.height;
+            document.querySelectorAll('.bounding-box').forEach(box => {
+                const boxRect = box.getBoundingClientRect();
+                currentAnns.push({
+                    filename: filename,
+                    width: annotationImage.naturalWidth,
+                    height: annotationImage.naturalHeight,
+                    class: box.dataset.class,
+                    xmin: Math.round((boxRect.left - imageRect.left) * scaleX),
+                    ymin: Math.round((boxRect.top - imageRect.top) * scaleY),
+                    xmax: Math.round((boxRect.right - imageRect.left) * scaleX),
+                    ymax: Math.round((boxRect.bottom - imageRect.top) * scaleY),
+                });
+            });
+            annotations[filename] = currentAnns;
+        }
+
+        function makeResizableAndDraggable(element) {
+            element.addEventListener('mousedown', function(e) {
+                if(isLocked) return;
+                e.stopPropagation();
+                selectBox(element);
+                const rect = element.getBoundingClientRect(), startX = e.clientX, startY = e.clientY;
+                const startWidth = rect.width, startHeight = rect.height;
+                const startLeft = parseFloat(element.style.left), startTop = parseFloat(element.style.top);
+                const isResize = e.clientX > rect.right - 15 || e.clientY > rect.bottom - 15;
+                function onMouseMove(e) {
+                    const dx = e.clientX - startX, dy = e.clientY - startY;
+                    if (isResize) {
+                        element.style.width = `${Math.max(10, startWidth + dx)}px`;
+                        element.style.height = `${Math.max(10, startHeight + dy)}px`;
+                    } else {
+                        const imageRect = annotationImage.getBoundingClientRect();
+                        const areaRect = annotationArea.getBoundingClientRect();
+                        const imageOffsetX = imageRect.left - areaRect.left, imageOffsetY = imageRect.top - areaRect.top;
+                        let newLeft = startLeft + dx, newTop = startTop + dy;
+                        newLeft = Math.max(imageOffsetX, Math.min(newLeft, imageOffsetX + imageRect.width - element.offsetWidth));
+                        newTop = Math.max(imageOffsetY, Math.min(newTop, imageOffsetY + imageRect.height - element.offsetHeight));
+                        element.style.left = `${newLeft}px`;
+                        element.style.top = `${newTop}px`;
+                    }
+                }
+                function onMouseUp() {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                    saveCurrentAnnotations();
+                }
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            });
+        }
+
+        // --- Helper & Export Functions ---
+        function selectBox(box) {
+            if(isLocked) return;
+            deselectAllBoxes();
+            selectedBox = box;
+            box.classList.add('selected-box');
+            setActiveClass(box.dataset.class);
+        }
+        function deselectAllBoxes() {
+            document.querySelectorAll('.bounding-box.selected-box').forEach(b => b.classList.remove('selected-box'));
+            selectedBox = null;
+        }
+        function exportAnnotations() {
+            saveCurrentAnnotations();
+            let csvContent = "filename,width,height,class,xmin,ymin,xmax,ymax,image_id\n";
+            let imageIdMap = {}, nextImageId = 0;
+            images.forEach(file => {
+                const filename = file.name;
+                if (imageIdMap[filename] === undefined) imageIdMap[filename] = nextImageId++;
+                const imageId = imageIdMap[filename];
+                if (annotations[filename]) {
+                    annotations[filename].forEach(ann => {
+                        csvContent += `${ann.filename},${ann.width},${ann.height},${ann.class},${ann.xmin},${ann.ymin},${ann.xmax},${ann.ymax},${imageId}\n`;
+                    });
+                }
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'annotations.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>

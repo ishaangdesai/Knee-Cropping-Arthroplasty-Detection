@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image Sorter — Metal / Regular</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #14161a;
+    --panel: #1d2026;
+    --border: #2c303a;
+    --text: #eef0f3;
+    --muted: #9aa2b1;
+    --metal: #4f8fff;
+    --regular: #ff9f43;
+    --good: #35c26a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px 16px 64px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 28px;
+    text-align: center;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 28px;
+    width: 100%;
+    max-width: 640px;
+  }
+  .setup-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .setup-row:last-of-type { border-bottom: none; }
+  .setup-row .label {
+    flex: 1;
+    min-width: 0;
+  }
+  .setup-row .label .name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .setup-row .label .status {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .setup-row .status.picked { color: var(--good); }
+  button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 9px;
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: transform 0.08s ease, filter 0.15s ease;
+  }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-neutral {
+    background: #2a2e37;
+    color: var(--text);
+  }
+  .btn-neutral:hover:not(:disabled) { filter: brightness(1.2); }
+  .btn-start {
+    background: var(--good);
+    color: #06210f;
+    width: 100%;
+    padding: 14px;
+    font-size: 16px;
+    margin-top: 24px;
+  }
+  .btn-start:hover:not(:disabled) { filter: brightness(1.08); }
+
+  #reviewScreen, #doneScreen { display: none; width: 100%; max-width: 720px; align-items: center; flex-direction: column; }
+
+  .progress-wrap {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+  .progress-track {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: var(--good);
+    width: 0%;
+    transition: width 0.2s ease;
+  }
+  .progress-label {
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stage {
+    width: 100%;
+    background: #000;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: min(58vh, 560px);
+    overflow: hidden;
+    position: relative;
+  }
+  .stage img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    user-select: none;
+  }
+  .filename {
+    margin-top: 10px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .decision-row {
+    display: flex;
+    gap: 14px;
+    width: 100%;
+    margin-top: 22px;
+  }
+  .btn-decision {
+    flex: 1;
+    padding: 22px 12px;
+    font-size: 18px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+  }
+  .btn-decision .key-hint {
+    font-size: 12px;
+    font-weight: 500;
+    opacity: 0.75;
+  }
+  .btn-metal { background: var(--metal); color: #04122d; }
+  .btn-metal:hover:not(:disabled) { filter: brightness(1.1); }
+  .btn-regular { background: var(--regular); color: #2c1400; }
+  .btn-regular:hover:not(:disabled) { filter: brightness(1.1); }
+
+  .util-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    margin-top: 14px;
+  }
+  .counts {
+    display: flex;
+    gap: 18px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .counts b { color: var(--text); }
+
+  #doneScreen .check {
+    font-size: 44px;
+    margin-bottom: 8px;
+  }
+  #doneScreen h2 { margin: 0 0 6px; }
+  #doneScreen .summary { color: var(--muted); margin-bottom: 26px; text-align: center; }
+  #doneScreen .summary b { color: var(--text); }
+
+  .error-banner {
+    display: none;
+    background: #3a1d1d;
+    border: 1px solid #6b2c2c;
+    color: #ffb4b4;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    width: 100%;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+  <h1>Image Sorter</h1>
+  <div class="subtitle">Pick a source folder, then sort every image into <b style="color:var(--metal)">Metal</b> or <b style="color:var(--regular)">Regular</b> — files are copied straight to disk as you go.</div>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="card" id="setupScreen">
+    <div class="setup-row">
+      <div class="label">
+        <div class="name">Source folder</div>
+        <div class="status" id="sourceStatus">Not selected</div>
+      </div>
+      <button class="btn-neutral" id="pickSourceBtn">Choose…</button>
+    </div>
+    <div class="setup-row">
+      <div class="label">
+        <div class="name">"Metal" destination folder</div>
+        <div class="status" id="metalStatus">Not selected</div>
+      </div>
+      <button class="btn-neutral" id="pickMetalBtn">Choose…</button>
+    </div>
+    <div class="setup-row">
+      <div class="label">
+        <div class="name">"Regular" destination folder</div>
+        <div class="status" id="regularStatus">Not selected</div>
+      </div>
+      <button class="btn-neutral" id="pickRegularBtn">Choose…</button>
+    </div>
+    <button class="btn-start" id="startBtn" disabled>Start sorting</button>
+  </div>
+
+  <div id="reviewScreen">
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label" id="progressLabel">0 / 0</div>
+    </div>
+
+    <div class="stage"><img id="stageImg" alt=""></div>
+    <div class="filename" id="stageFilename"></div>
+
+    <div class="decision-row">
+      <button class="btn-decision btn-regular" id="regularBtn">
+        <span>⬅ Regular</span>
+        <span class="key-hint">Left Arrow</span>
+      </button>
+      <button class="btn-decision btn-metal" id="metalBtn">
+        <span>Metal ➜</span>
+        <span class="key-hint">Right Arrow</span>
+      </button>
+    </div>
+
+    <div class="util-row">
+      <div class="counts">
+        <span>Metal: <b id="metalCount">0</b></span>
+        <span>Regular: <b id="regularCount">0</b></span>
+      </div>
+      <button class="btn-neutral" id="undoBtn" disabled>Undo last</button>
+    </div>
+  </div>
+
+  <div id="doneScreen">
+    <div class="check">✅</div>
+    <h2>All done</h2>
+    <div class="summary">
+      Sorted <b id="doneTotal">0</b> images —
+      <b id="doneMetal">0</b> to Metal, <b id="doneRegular">0</b> to Regular.<br>
+      Files are already saved in the folders you picked.
+    </div>
+    <button class="btn-start" id="restartBtn" style="max-width:280px">Sort another folder</button>
+  </div>
+
+<script>
+(() => {
+  const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg|avif|tiff?)$/i;
+
+  const el = (id) => document.getElementById(id);
+  const setupScreen = el('setupScreen');
+  const reviewScreen = el('reviewScreen');
+  const doneScreen = el('doneScreen');
+  const errorBanner = el('errorBanner');
+
+  let sourceDirHandle = null;
+  let metalDirHandle = null;
+  let regularDirHandle = null;
+
+  let files = [];      // [{ handle, name }]
+  let index = 0;
+  let objectUrl = null;
+  let history = [];    // [{ index, dest: 'metal'|'regular' }]
+  let counts = { metal: 0, regular: 0 };
+
+  function showError(msg) {
+    errorBanner.textContent = msg;
+    errorBanner.style.display = 'block';
+  }
+  function clearError() {
+    errorBanner.style.display = 'none';
+  }
+
+  if (!('showDirectoryPicker' in window)) {
+    showError('This browser does not support the File System Access API (showDirectoryPicker). Please use a recent Chrome or Edge.');
+  }
+
+  function refreshSetupUI() {
+    el('startBtn').disabled = !(sourceDirHandle && metalDirHandle && regularDirHandle);
+  }
+
+  el('pickSourceBtn').addEventListener('click', async () => {
+    try {
+      sourceDirHandle = await window.showDirectoryPicker({ id: 'source', mode: 'read' });
+      el('sourceStatus').textContent = sourceDirHandle.name;
+      el('sourceStatus').classList.add('picked');
+      clearError();
+    } catch (e) { if (e.name !== 'AbortError') showError(e.message); }
+    refreshSetupUI();
+  });
+
+  el('pickMetalBtn').addEventListener('click', async () => {
+    try {
+      metalDirHandle = await window.showDirectoryPicker({ id: 'metal', mode: 'readwrite' });
+      el('metalStatus').textContent = metalDirHandle.name;
+      el('metalStatus').classList.add('picked');
+      clearError();
+    } catch (e) { if (e.name !== 'AbortError') showError(e.message); }
+    refreshSetupUI();
+  });
+
+  el('pickRegularBtn').addEventListener('click', async () => {
+    try {
+      regularDirHandle = await window.showDirectoryPicker({ id: 'regular', mode: 'readwrite' });
+      el('regularStatus').textContent = regularDirHandle.name;
+      el('regularStatus').classList.add('picked');
+      clearError();
+    } catch (e) { if (e.name !== 'AbortError') showError(e.message); }
+    refreshSetupUI();
+  });
+
+  el('startBtn').addEventListener('click', async () => {
+    try {
+      files = [];
+      for await (const entry of sourceDirHandle.values()) {
+        if (entry.kind === 'file' && IMAGE_EXT.test(entry.name)) {
+          files.push({ handle: entry, name: entry.name });
+        }
+      }
+      files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+
+      if (files.length === 0) {
+        showError('No image files found in the selected source folder.');
+        return;
+      }
+      clearError();
+      index = 0;
+      history = [];
+      counts = { metal: 0, regular: 0 };
+      updateCounts();
+      setupScreen.style.display = 'none';
+      reviewScreen.style.display = 'flex';
+      await showCurrent();
+    } catch (e) {
+      showError(e.message);
+    }
+  });
+
+  async function showCurrent() {
+    if (index >= files.length) return finish();
+    const f = files[index];
+    const file = await f.handle.getFile();
+    if (objectUrl) URL.revokeObjectURL(objectUrl);
+    objectUrl = URL.createObjectURL(file);
+    el('stageImg').src = objectUrl;
+    el('stageFilename').textContent = f.name;
+    el('progressLabel').textContent = `${index + 1} / ${files.length}`;
+    el('progressFill').style.width = `${(index / files.length) * 100}%`;
+    el('undoBtn').disabled = history.length === 0;
+  }
+
+  function updateCounts() {
+    el('metalCount').textContent = counts.metal;
+    el('regularCount').textContent = counts.regular;
+  }
+
+  function setDeciding(disabled) {
+    el('metalBtn').disabled = disabled;
+    el('regularBtn').disabled = disabled;
+  }
+
+  async function copyToDir(fileHandle, destDirHandle) {
+    const file = await fileHandle.getFile();
+    const destHandle = await destDirHandle.getFileHandle(file.name, { create: true });
+    const writable = await destHandle.createWritable();
+    await writable.write(file);
+    await writable.close();
+  }
+
+  async function decide(dest) {
+    setDeciding(true);
+    try {
+      const f = files[index];
+      const destDirHandle = dest === 'metal' ? metalDirHandle : regularDirHandle;
+      await copyToDir(f.handle, destDirHandle);
+      counts[dest]++;
+      history.push({ index, dest });
+      updateCounts();
+      index++;
+      await showCurrent();
+      clearError();
+    } catch (e) {
+      showError('Failed to copy "' + files[index].name + '": ' + e.message);
+    } finally {
+      setDeciding(false);
+    }
+  }
+
+  el('metalBtn').addEventListener('click', () => decide('metal'));
+  el('regularBtn').addEventListener('click', () => decide('regular'));
+
+  el('undoBtn').addEventListener('click', async () => {
+    const last = history.pop();
+    if (!last) return;
+    try {
+      const destDirHandle = last.dest === 'metal' ? metalDirHandle : regularDirHandle;
+      const name = files[last.index].name;
+      await destDirHandle.removeEntry(name);
+      counts[last.dest]--;
+      updateCounts();
+      index = last.index;
+      doneScreen.style.display = 'none';
+      reviewScreen.style.display = 'flex';
+      await showCurrent();
+      clearError();
+    } catch (e) {
+      showError('Undo failed: ' + e.message);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (reviewScreen.style.display !== 'flex') return;
+    if (e.key === 'ArrowRight') decide('metal');
+    else if (e.key === 'ArrowLeft') decide('regular');
+  });
+
+  function finish() {
+    reviewScreen.style.display = 'none';
+    doneScreen.style.display = 'flex';
+    el('doneTotal').textContent = files.length;
+    el('doneMetal').textContent = counts.metal;
+    el('doneRegular').textContent = counts.regular;
+  }
+
+  el('restartBtn').addEventListener('click', () => {
+    sourceDirHandle = metalDirHandle = regularDirHandle = null;
+    files = []; index = 0; history = []; counts = { metal: 0, regular: 0 };
+    el('sourceStatus').textContent = 'Not selected';
+    el('metalStatus').textContent = 'Not selected';
+    el('regularStatus').textContent = 'Not selected';
+    for (const id of ['sourceStatus', 'metalStatus', 'regularStatus']) el(id).classList.remove('picked');
+    refreshSetupUI();
+    doneScreen.style.display = 'none';
+    setupScreen.style.display = 'block';
+  });
+})();
+</script>
+</body>
+</html>

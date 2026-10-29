@@ -1,0 +1,35 @@
+Model loaded (epoch 15, val_auc=0.9978)
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5050
+Press CTRL+C to quit
+127.0.0.1 - - [21/Jul/2026 15:04:49] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:13] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:14] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:16] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:17] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:18] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:20] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:21] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:22] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:23] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:25] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:26] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:27] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:28] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:30] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:31] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:32] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:33] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:35] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:36] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:37] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:39] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:40] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:41] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:43] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:44] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:45] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:46] "POST /predict_batch HTTP/1.1" 200 -
+127.0.0.1 - - [21/Jul/2026 15:05:47] "POST /predict_batch HTTP/1.1" 200 -
